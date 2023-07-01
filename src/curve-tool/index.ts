@@ -1,4 +1,4 @@
-import Konva from 'konva';
+import Konva from "konva";
 import {
   EMPTY_ANCHOR_GROUP,
   ANCHOR_WIDTH,
@@ -6,11 +6,11 @@ import {
   ANCHOR_HOVER_COLOR,
   ANCHOR_COLOR,
   ANCHOR_ACTIVE_COLOR, CURVE_ACTIVE_COLOR, ANCHOR_STROKE_WIDTH, CURVE_STROKE_WIDTH, CURVE_COLOR
-} from './constants';
-import { IAnchorGroup } from './types';
-import { Rect } from 'konva/lib/shapes/Rect';
-import { Shape } from 'konva/lib/Shape';
-import { Layer } from 'konva/lib/Layer';
+} from "./constants";
+import { IAnchorGroup } from "./types";
+import { Rect } from "konva/lib/shapes/Rect";
+import { Shape } from "konva/lib/Shape";
+import { Layer } from "konva/lib/Layer";
 
 export class CurveTool {
   anchorGroups: IAnchorGroup[] = [];
@@ -27,10 +27,10 @@ export class CurveTool {
   constructor(htmlImageId: string) {
     const htmlImage = document.getElementById(htmlImageId) as HTMLCanvasElement;
     this.canvasImage = new Image();
-    this.canvasImage.src = htmlImage.getAttribute('src');
+    this.canvasImage.src = htmlImage.getAttribute("src");
 
-    const div = document.createElement('div');
-    div.setAttribute('id', htmlImageId);
+    const div = document.createElement("div");
+    div.setAttribute("id", htmlImageId);
     htmlImage.parentNode.replaceChild(div, htmlImage);
 
     this.canvasImage.onload = this.init.bind(this, htmlImageId);
@@ -43,7 +43,7 @@ export class CurveTool {
     const stage = new Konva.Stage({
       container: htmlCanvasId,
       width: this.canvasImage.width,
-      height: this.canvasImage.height,
+      height: this.canvasImage.height
     });
     stage.add(this.canvasLayer);
 
@@ -52,25 +52,13 @@ export class CurveTool {
       x: 0,
       y: 0,
       width: this.canvasImage.width,
-      height: this.canvasImage.height,
+      height: this.canvasImage.height
     });
     this.canvasLayer.add(bgImage);
 
-    bgImage.on('mouseup', this.handleBgMouseUp.bind(this));
-    stage.on('mousemove', this.handleStageMouseMove.bind(this));
-    stage.on('mouseup', this.handleStageMouseUp.bind(this));
-  }
-
-  private calculateControlAnchorAxisPoint(t: number, p1: number, p3: number, bezierValue: number) {
-    const iT = 1 - t;
-    return (bezierValue - iT * iT * p1 - t * t * p3) / (2 * iT * t);
-  }
-
-  getControlAnchor(startX: number, startY: number, endX: number, endY: number, bezierX: number, bezierY: number, position: number) {
-    return {
-      x: this.calculateControlAnchorAxisPoint(position, startX, endX, bezierX),
-      y: this.calculateControlAnchorAxisPoint(position, startY, endY, bezierY),
-    };
+    bgImage.on("mouseup", this.handleBgMouseUp.bind(this));
+    stage.on("mousemove", this.handleStageMouseMove.bind(this));
+    stage.on("mouseup", this.handleStageMouseUp.bind(this));
   }
 
   handleBgMouseUp(e: any) {
@@ -85,8 +73,7 @@ export class CurveTool {
 
     const x = e.evt.layerX;
     const y = e.evt.layerY;
-    const startAnchor = this.buildAnchor(x - ANCHOR_WIDTH / 2, y - ANCHOR_WIDTH / 2);
-    this.activeAnchorGroup.start = startAnchor;
+    this.activeAnchorGroup.start = this.buildAnchor(x - ANCHOR_WIDTH / 2, y - ANCHOR_WIDTH / 2);
 
     const bindedAnchorGroup = this.activeAnchorGroup;
     this.activeAnchor = this.buildAnchor(x - ANCHOR_WIDTH / 2, y - ANCHOR_WIDTH / 2);
@@ -102,7 +89,7 @@ export class CurveTool {
         ctx.moveTo(bindedAnchorGroup.start.x() + ANCHOR_WIDTH / 2, bindedAnchorGroup.start.y() + ANCHOR_HEIGHT / 2);
         ctx.lineTo(this.activeAnchor.x() + ANCHOR_WIDTH / 2, this.activeAnchor.y() + ANCHOR_HEIGHT / 2);
         ctx.fillStrokeShape(shape);
-      },
+      }
     });
 
     this.canvasLayer.add(this.activeCurve);
@@ -131,51 +118,18 @@ export class CurveTool {
 
     this.activeAnchorGroup.end = this.activeAnchor;
 
-    const controlAnchor = this.buildAnchor(
+    this.activeAnchorGroup.control = this.buildAnchor(
       (this.activeAnchorGroup.start.x() + this.activeAnchorGroup.end.x()) / 2,
       (this.activeAnchorGroup.start.y() + this.activeAnchorGroup.end.y()) / 2
     );
-    this.activeAnchorGroup.control = controlAnchor;
     const bindedAnchorGroup = this.activeAnchorGroup;
 
-    const curve = new Konva.Shape({
-      stroke: CURVE_ACTIVE_COLOR,
-      strokeWidth: CURVE_STROKE_WIDTH,
-      sceneFunc: (ctx: any, shape: any) => {
-        const controlX = bindedAnchorGroup.control.x();
-        const controlY = bindedAnchorGroup.control.y();
-
-        const pt = this.getControlAnchor(
-          bindedAnchorGroup.start.x(),
-          bindedAnchorGroup.start.y(),
-          bindedAnchorGroup.end.x(),
-          bindedAnchorGroup.end.y(),
-          controlX,
-          controlY,
-          0.5,
-        );
-
-        ctx.beginPath();
-        ctx.moveTo(bindedAnchorGroup.start.x() + ANCHOR_WIDTH / 2, bindedAnchorGroup.start.y() + ANCHOR_HEIGHT / 2);
-        ctx.quadraticCurveTo(
-          pt.x + ANCHOR_WIDTH / 2,
-          pt.y + ANCHOR_HEIGHT / 2,
-          bindedAnchorGroup.end.x() + ANCHOR_WIDTH / 2,
-          bindedAnchorGroup.end.y() + ANCHOR_HEIGHT / 2
-        );
-        ctx.fillStrokeShape(shape);
-      },
-    });
-    this.activeAnchorGroup.curve = curve;
-    this.canvasLayer.add(curve);
-
-    curve.zIndex(1);
-    curve.on('mouseup', this.handleBgMouseUp.bind(this));
+    this.createCurveLine(bindedAnchorGroup);
     this.activeCurve.destroy();
   }
 
   setActiveAnchorGroup(activeAnchor: Rect = null) {
-    this.activeAnchorGroupIdx = activeAnchor === null ? -1 : activeAnchor.getAttr('groupIdx');
+    this.activeAnchorGroupIdx = activeAnchor === null ? -1 : activeAnchor.getAttr("groupIdx");
     if (this.activeAnchorGroupIdx > -1 && this.activeAnchorGroup) {
       this.activeAnchorGroup.start?.stroke(activeAnchor === this.activeAnchorGroup.start ? ANCHOR_HOVER_COLOR : ANCHOR_ACTIVE_COLOR);
       this.activeAnchorGroup.end?.stroke(activeAnchor === this.activeAnchorGroup.end ? ANCHOR_HOVER_COLOR : ANCHOR_ACTIVE_COLOR);
@@ -191,14 +145,17 @@ export class CurveTool {
     const notActiveAnchorGroups = this.anchorGroups.filter((q) => q !== this.activeAnchorGroup);
     notActiveAnchorGroups.forEach((q) => {
       q.start?.stroke(ANCHOR_COLOR);
-      q.start?.zIndex(2);
       q.end?.stroke(ANCHOR_COLOR);
-      q.end?.zIndex(2);
       q.control?.stroke(ANCHOR_COLOR);
-      q.control?.zIndex(2);
       q.curve?.stroke(CURVE_COLOR);
+
+      q.start?.zIndex(2);
+      q.end?.zIndex(2);
+      q.control?.zIndex(2);
       q.curve?.zIndex(1);
     });
+
+    this.updateCurveLine(this.activeAnchorGroup);
   }
 
   buildAnchor(x: number, y: number): Rect {
@@ -209,28 +166,66 @@ export class CurveTool {
       height: ANCHOR_HEIGHT,
       stroke: ANCHOR_ACTIVE_COLOR,
       strokeWidth: ANCHOR_STROKE_WIDTH,
-      draggable: true,
+      draggable: true
     });
     this.canvasLayer.add(anchor);
     anchor.zIndex(2);
-    anchor.setAttr('groupIdx', this.activeAnchorGroupIdx);
+    anchor.setAttr("groupIdx", this.activeAnchorGroupIdx);
 
     const curveTool = this;
-    anchor.on('mouseover', function () {
-      if (curveTool.activeAnchorGroupIdx === this.getAttr('groupIdx') && !curveTool.activeCurve?.parent) {
+    anchor.on("mouseover", function() {
+      if (curveTool.activeAnchorGroupIdx === this.getAttr("groupIdx") && !curveTool.activeCurve?.parent) {
         this.stroke(ANCHOR_HOVER_COLOR);
       }
     });
-    anchor.on('mouseout', function () {
-      if (curveTool.activeAnchorGroupIdx === this.getAttr('groupIdx') && !curveTool.activeCurve?.parent) {
+    anchor.on("mouseout", function() {
+      if (curveTool.activeAnchorGroupIdx === this.getAttr("groupIdx") && !curveTool.activeCurve?.parent) {
         this.stroke(ANCHOR_ACTIVE_COLOR);
       }
     });
-    anchor.on('dragmove', function () {
+    anchor.on("dragmove", function() {
       curveTool.setActiveAnchorGroup(this);
     });
 
     this.setActiveAnchorGroup(anchor);
     return anchor;
+  }
+
+  private createCurveLine(bindedAnchorGroup: IAnchorGroup) {
+    const points = [
+      bindedAnchorGroup.start.x() + ANCHOR_WIDTH / 2,
+      bindedAnchorGroup.start.y() + ANCHOR_HEIGHT / 2,
+      bindedAnchorGroup.control.x() + ANCHOR_WIDTH / 2,
+      bindedAnchorGroup.control.y() + ANCHOR_HEIGHT / 2,
+      bindedAnchorGroup.end.x() + ANCHOR_WIDTH / 2,
+      bindedAnchorGroup.end.y() + ANCHOR_HEIGHT / 2
+    ];
+    bindedAnchorGroup.curve = new Konva.Line({
+      points,
+      stroke: CURVE_ACTIVE_COLOR,
+      strokeWidth: 2,
+      lineJoin: "round",
+      lineCap: "round",
+      tension: 0.5
+    });
+    this.canvasLayer.add(bindedAnchorGroup.curve);
+    bindedAnchorGroup.curve.zIndex(1);
+    bindedAnchorGroup.curve.on("mouseup", this.handleBgMouseUp.bind(this));
+  }
+
+  private updateCurveLine(bindedAnchorGroup: IAnchorGroup) {
+    if (!bindedAnchorGroup?.control) {
+      return;
+    }
+
+    const points: number[] = [
+      bindedAnchorGroup.start.x() + ANCHOR_WIDTH / 2,
+      bindedAnchorGroup.start.y() + ANCHOR_HEIGHT / 2,
+      bindedAnchorGroup.control.x() + ANCHOR_WIDTH / 2,
+      bindedAnchorGroup.control.y() + ANCHOR_HEIGHT / 2,
+      bindedAnchorGroup.end.x() + ANCHOR_WIDTH / 2,
+      bindedAnchorGroup.end.y() + ANCHOR_HEIGHT / 2
+    ];
+    bindedAnchorGroup.curve.points(points);
   }
 }
